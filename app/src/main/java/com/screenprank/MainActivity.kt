@@ -3,8 +3,11 @@ package com.screenprank
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -25,6 +28,12 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("screen_prank", MODE_PRIVATE) }
     private lateinit var statusText: TextView
     private var pendingStart = false
+    private val creatureThumbnails by lazy {
+        val sheet = BitmapFactory.decodeResource(resources, R.drawable.creatures)
+        Array(14) { index ->
+            BitmapDrawable(resources, Bitmap.createBitmap(sheet, (index % 7) * 64, (index / 7) * 64, 64, 64))
+        }
+    }
     private val creatures = listOf(
         "זבוב" to 0, "עכביש" to 1, "מקק" to 2, "נמלה" to 3,
         "פרת משה רבנו" to 4, "יתוש" to 5, "דבורה" to 6,
@@ -108,6 +117,9 @@ class MainActivity : Activity() {
                 setTextColor(if (chosen) 0xFF10130B.toInt() else 0xFFF2F4F8.toInt())
                 background = rounded(if (chosen) 0xFFB6FF3B.toInt() else 0xFF292C38.toInt(), 18)
                 setPadding(dp(5), 0, dp(5), 0)
+                creatureThumbnails[pair.second].setBounds(0, 0, dp(28), dp(28))
+                setCompoundDrawablesRelative(creatureThumbnails[pair.second], null, null, null)
+                compoundDrawablePadding = dp(4)
                 setOnClickListener {
                     val chosen = selectedCreatures().toMutableSet()
                     if (!chosen.add(pair.second)) chosen.remove(pair.second)

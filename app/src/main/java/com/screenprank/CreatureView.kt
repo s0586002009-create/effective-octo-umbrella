@@ -1,6 +1,8 @@
 package com.screenprank
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -44,6 +46,11 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
     private val spots = ArrayList<Spot>()
     private val handler = Handler(Looper.getMainLooper())
     private val bodyRect = RectF()
+    private val creatureFrames by lazy {
+        val sheet = BitmapFactory.decodeResource(resources, R.drawable.creatures)
+        Array(14) { index -> Bitmap.createBitmap(sheet, (index % 7) * 64, (index / 7) * 64, 64, 64) }
+    }
+    private val creatureImagePaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val path = Path()
     private val crackPath = Path()
     private var widthPx = 0f
@@ -273,131 +280,9 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
         canvas.translate(bug.x, bug.y)
         canvas.rotate(bug.rotation)
         canvas.scale(bug.scale, bug.scale)
-        canvas.drawOval(5f, 42f, 96f, 62f, shadowPaint)
-
-        if (bug.type == 9 || bug.type == 13) {
-            drawWorm(canvas, bug)
-            canvas.restore()
-            return
-        }
-
-        val legs = when (bug.type) {
-            1, 7 -> 8
-            8, 10, 11, 12 -> 4
-            9, 13 -> 0
-            else -> 6
-        }
-        for (i in 0 until legs / 2) {
-            val x = 29f + i * (38f / (legs / 2).coerceAtLeast(1))
-            val phase = sin(bug.phase * 8f + i * 1.6f) * 3f
-            path.reset()
-            path.moveTo(x, 38f)
-            path.quadTo(x - 8f, 42f + phase, x - 17f, 55f + phase)
-            path.moveTo(x + 5f, 38f)
-            path.quadTo(x + 14f, 43f - phase, x + 20f, 55f - phase)
-            canvas.drawPath(path, legPaint)
-            if (realistic) {
-                path.reset()
-                path.moveTo(x - 9f, 46f + phase)
-                path.lineTo(x - 12f, 43f + phase)
-                path.moveTo(x + 12f, 47f - phase)
-                path.lineTo(x + 15f, 44f - phase)
-                canvas.drawPath(path, veinPaint)
-            }
-        }
-
-        if (bug.type == 0 || bug.type == 5 || bug.type == 6) {
-            canvas.drawOval(34f, 4f, 75f, 36f, wingPaint)
-            canvas.drawOval(44f, 1f, 84f, 31f, wingPaint)
-            path.reset()
-            path.moveTo(44f, 8f); path.quadTo(58f, 19f, 69f, 32f)
-            path.moveTo(52f, 5f); path.quadTo(66f, 18f, 79f, 27f)
-            canvas.drawPath(path, veinPaint)
-        }
-
-        bodyPaint.shader = shaders[bug.type]
-        when (bug.type) {
-            10 -> {
-                canvas.drawCircle(31f, 24f, 13f, bodyPaint)
-                canvas.drawCircle(74f, 28f, 20f, bodyPaint)
-                canvas.drawOval(78f, 6f, 96f, 26f, bodyPaint)
-                canvas.drawOval(80f, 9f, 92f, 23f, shinePaint)
-                canvas.drawOval(48f, 25f, 90f, 51f, bodyPaint)
-                path.reset(); path.moveTo(18f, 32f); path.cubicTo(0f, 42f, 7f, 59f, 0f, 62f)
-                canvas.drawPath(path, legPaint)
-            }
-            11 -> {
-                canvas.drawOval(16f, 24f, 88f, 53f, bodyPaint)
-                canvas.drawCircle(60f, 22f, 21f, bodyPaint)
-                canvas.drawCircle(60f, 22f, 14f, shinePaint)
-                path.reset(); path.moveTo(60f, 22f); path.cubicTo(35f, -2f, 83f, 0f, 67f, 28f)
-                canvas.drawPath(path, legPaint)
-                canvas.drawOval(78f, 15f, 83f, 20f, eyeWhitePaint)
-            }
-            12 -> {
-                canvas.drawOval(16f, 18f, 84f, 55f, bodyPaint)
-                canvas.drawCircle(35f, 14f, 10f, bodyPaint)
-                canvas.drawCircle(69f, 14f, 10f, bodyPaint)
-            }
-            8 -> {
-                canvas.drawOval(16f, 23f, 82f, 48f, bodyPaint)
-                canvas.drawCircle(87f, 25f, 13f, bodyPaint)
-                canvas.drawCircle(88f, 22f, 3.5f, eyeWhitePaint)
-                canvas.drawCircle(89f, 22f, 1.7f, pupilPaint)
-                path.reset(); path.moveTo(20f, 32f); path.quadTo(5f, 20f, 0f, 9f)
-                canvas.drawPath(path, legPaint)
-            }
-            7 -> {
-                canvas.drawOval(26f, 20f, 73f, 49f, bodyPaint)
-                path.reset(); path.moveTo(66f, 24f); path.cubicTo(95f, -3f, 96f, -12f, 85f, -17f)
-                canvas.drawPath(path, legPaint)
-                canvas.drawCircle(85f, -17f, 4.5f, bodyPaint)
-            }
-            3 -> {
-                canvas.drawOval(18f, 24f, 48f, 43f, bodyPaint)
-                canvas.drawOval(46f, 17f, 64f, 43f, bodyPaint)
-                canvas.drawOval(61f, 20f, 91f, 46f, bodyPaint)
-            }
-            4 -> {
-                canvas.drawOval(19f, 15f, 87f, 54f, bodyPaint)
-                bodyPaint.shader = null
-                canvas.drawLine(52f, 16f, 52f, 53f, legPaint)
-                for (x in listOf(36f, 68f)) for (y in listOf(26f, 41f)) canvas.drawCircle(x, y, 4f, darkPaint)
-            }
-            else -> {
-                canvas.drawOval(18f, 25f, 72f, 49f, bodyPaint)
-                canvas.drawOval(57f, 19f, 89f, 43f, bodyPaint)
-                if (bug.type == 2) {
-                    bodyPaint.shader = null
-                    canvas.drawOval(25f, 28f, 66f, 39f, shinePaint)
-                }
-            }
-        }
-
-        bodyPaint.shader = null
-        if (bug.type != 10 && bug.type != 11 && bug.type != 12) {
-            canvas.drawCircle(83f, 24f, 5.4f, eyeWhitePaint)
-            canvas.drawCircle(85f, 24f, 2.4f, pupilPaint)
-            canvas.drawCircle(86f, 22.8f, 1f, shinePaint)
-        } else if (bug.type == 12) {
-            canvas.drawCircle(34f, 10f, 5f, eyeWhitePaint)
-            canvas.drawCircle(68f, 10f, 5f, eyeWhitePaint)
-            canvas.drawCircle(35f, 10f, 2.2f, pupilPaint)
-            canvas.drawCircle(69f, 10f, 2.2f, pupilPaint)
-        }
-
-        path.reset()
-        path.moveTo(79f, 15f); path.quadTo(94f, 0f, 91f, -9f)
-        path.moveTo(73f, 15f); path.quadTo(82f, -1f, 78f, -10f)
-        canvas.drawPath(path, legPaint)
-
-        if (realistic) {
-            canvas.drawOval(28f, 27f, 63f, 32f, shinePaint)
-            for (n in 0..5) {
-                val hx = 29f + n * 8f
-                canvas.drawLine(hx, 40f, hx - 3f, 44f, veinPaint)
-            }
-        }
+        canvas.drawOval(5f, 76f, 96f, 94f, shadowPaint)
+        val bitmap = creatureFrames[bug.type.coerceIn(0, 13)]
+        canvas.drawBitmap(bitmap, null, RectF(0f, 0f, 100f, 100f), creatureImagePaint)
         canvas.restore()
     }
 
