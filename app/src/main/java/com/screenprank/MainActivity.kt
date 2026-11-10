@@ -135,7 +135,6 @@ class MainActivity : Activity() {
         val motion = card("מגע ותנועה", "הגדר איך היצורים מתנהגים על המסך.")
         page.addView(motion)
         addToggle(motion, "ריאליזם מלא", "realistic", true, "ציור מפורט עם הצללה, ברק ופרטים.")
-        addToggle(motion, "אפשר למעוך בלחיצה", "touch", false, "במצב כבוי, המגע עובר דרך האפקט והטלפון נשאר רגיל לשימוש.")
         addToggle(motion, "גודל אקראי לכל יצור", "random_size", true, null)
         addToggle(motion, "צליל בעת הפעלה", "sound_enabled", false, "צליל קצר שנוצר במכשיר, ללא קובצי שמע.")
         val pathButton = button("סגנון תנועה: ${pathLabel()}", 0xFF292C38.toInt(), Color.WHITE)
@@ -258,7 +257,7 @@ class MainActivity : Activity() {
                 else -> 0
             }))
         }
-        listOf("realistic", "random_size", "touch", "sound_enabled", "shake_stop").forEach { key ->
+        listOf("realistic", "random_size", "sound_enabled", "shake_stop").forEach { key ->
             editor.putBoolean("custom_$key", prefs.getBoolean(key, key == "realistic" || key == "random_size"))
         }
         editor.putString("custom_selected_creatures", prefs.getString("selected_creatures", "0"))
