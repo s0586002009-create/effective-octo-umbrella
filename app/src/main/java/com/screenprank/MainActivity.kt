@@ -177,6 +177,12 @@ class MainActivity : Activity() {
             b.setOnClickListener { applyProfile(index) }
             profiles.addView(b, matchWidth())
         }
+        val saveProfile = button("שמור את ההגדרות כפרופיל אישי", 0xFF3B4658.toInt(), Color.WHITE)
+        saveProfile.setOnClickListener { saveCustomProfile() }
+        profiles.addView(saveProfile, matchWidth())
+        val loadProfile = button("טען פרופיל אישי", 0xFF3B4658.toInt(), Color.WHITE)
+        loadProfile.setOnClickListener { loadCustomProfile() }
+        profiles.addView(loadProfile, matchWidth())
 
         val foot = text("הערה: האפליקציה אינה מציגה הודעות מערכת מזויפות ואינה מדמה מסכי נעילה או שירותים פיננסיים. להפסקה מיידית לחץ על הכפתור באפליקציה או על עצור בהתראה.", 12, 0xFF9AA0B4.toInt(), false)
         foot.setPadding(dp(4), dp(18), dp(4), 0)
@@ -231,6 +237,49 @@ class MainActivity : Activity() {
 
     private fun notifyOverlay() {
         if (OverlayService.active) startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_UPDATE))
+    }
+
+    private fun saveCustomProfile() {
+        val editor = prefs.edit()
+        listOf("count", "size", "speed", "creature_type", "path_mode", "duration_minutes").forEach { key ->
+            editor.putInt("custom_$key", prefs.getInt(key, when (key) {
+                "count" -> 6
+                "size" -> 74
+                "speed" -> 4
+                else -> 0
+            }))
+        }
+        listOf("realistic", "random_size", "touch", "sound_enabled", "shake_stop").forEach { key ->
+            editor.putBoolean("custom_$key", prefs.getBoolean(key, key == "realistic" || key == "random_size"))
+        }
+        editor.putString("custom_selected_creatures", prefs.getString("selected_creatures", "0"))
+        editor.putBoolean("custom_profile_saved", true).apply()
+        Toast.makeText(this, "הפרופיל האישי נשמר", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun loadCustomProfile() {
+        if (!prefs.getBoolean("custom_profile_saved", false)) {
+            Toast.makeText(this, "עדיין לא שמרת פרופיל אישי", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val editor = prefs.edit()
+        listOf("count", "size", "speed", "creature_type", "path_mode", "duration_minutes").forEach { key ->
+            val fallback = when (key) {
+                "count" -> 6
+                "size" -> 74
+                "speed" -> 4
+                else -> 0
+            }
+            editor.putInt(key, prefs.getInt("custom_$key", fallback))
+        }
+        listOf("realistic", "random_size", "touch", "sound_enabled", "shake_stop").forEach { key ->
+            editor.putBoolean(key, prefs.getBoolean("custom_$key", false))
+        }
+        editor.putString("selected_creatures", prefs.getString("custom_selected_creatures", "0"))
+        editor.apply()
+        notifyOverlay()
+        buildScreen()
+        Toast.makeText(this, "הפרופיל האישי נטען", Toast.LENGTH_SHORT).show()
     }
 
     private fun selectedCreatures(): Set<Int> {
