@@ -52,6 +52,9 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
     private var sizeDp = 74
     private var speedSetting = 4
     private var creatureType = 0
+    private var selectedTypes: List<Int> = listOf(0)
+    private var pathMode = 0
+    private var extraEffect = 0
     private var realistic = true
     private var randomSize = true
     private var touchEnabled = false
@@ -151,10 +154,14 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
         sizeDp = prefs.getInt("size", 74).coerceIn(16, 200)
         speedSetting = prefs.getInt("speed", 4).coerceIn(1, 10)
         creatureType = prefs.getInt("creature_type", 0).coerceIn(0, 13)
+        selectedTypes = prefs.getString("selected_creatures", "")?.split(",")
+            ?.mapNotNull { it.toIntOrNull() }?.filter { it in 0..13 }?.distinct()
+            ?.ifEmpty { listOf(creatureType) } ?: listOf(creatureType)
+        pathMode = prefs.getInt("path_mode", 0).coerceIn(0, 3)
         realistic = prefs.getBoolean("realistic", true)
         randomSize = prefs.getBoolean("random_size", true)
         touchEnabled = prefs.getBoolean("touch", false)
-        val signature = "$count:$sizeDp:$speedSetting:$creatureType:$randomSize"
+        val signature = "$count:$sizeDp:$speedSetting:$creatureType:$randomSize:$selectedTypes:$pathMode"
         if (signature != lastConfig && widthPx > 0f) rebuildCritters()
         lastConfig = signature
         invalidate()
@@ -183,7 +190,7 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
                     vy = sin(angle) * speed * 0.45f,
                     rotation = angle * 180f / PI.toFloat(),
                     scale = pxSize / 90f,
-                    type = creatureType
+                    type = selectedTypes.random(random)
                 )
             )
         }
@@ -220,6 +227,7 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
         super.onDraw(canvas)
         for (bug in bugs) drawCritter(canvas, bug)
         if (dirty) drawDirt(canvas)
+        if (extraEffect != 0) drawExtraEffect(canvas)
         if (cracked) {
             canvas.drawPath(crackPath, crackDarkPaint)
             canvas.save()
