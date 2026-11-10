@@ -78,6 +78,12 @@ jobs:
             echo "KEY_PASSWORD=$KEY_PASS"
           } >> "$GITHUB_ENV"
 
+      - name: Restore realistic creature images
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          cat assets/creatures/part*.b64 | tr -d '\\r\\n' | base64 --decode > app/src/main/res/drawable-nodpi/creatures.webp
+          test -s app/src/main/res/drawable-nodpi/creatures.webp
+
       - name: Build debug and release APKs
         run: ./gradlew --no-daemon clean assembleDebug assembleRelease
 
