@@ -1,0 +1,329 @@
+package com.screenprank
+
+import android.app.Activity
+import android.app.AlertDialog
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import android.view.Gravity
+import android.view.View
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.Switch
+import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.ContextCompat
+
+class MainActivity : Activity() {
+    private val prefs by lazy { getSharedPreferences("screen_prank", MODE_PRIVATE) }
+    private lateinit var statusText: TextView
+    private var pendingStart = false
+    private val creatures = listOf(
+        "זבוב" to 0, "עכביש" to 1, "מקק" to 2, "נמלה" to 3,
+        "פרת משה רבנו" to 4, "יתוש" to 5, "דבורה" to 6,
+        "עקרב" to 7, "לטאה" to 8, "נחש" to 9,
+        "עכבר" to 10, "שבלול" to 11, "צפרדע" to 12, "תולעת" to 13
+    )
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.statusBarColor = Color.rgb(14, 15, 20)
+        window.navigationBarColor = Color.rgb(14, 15, 20)
+        buildScreen()
+        if (!prefs.getBoolean("intro_seen", false)) showIntro()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::statusText.isInitialized) refreshStatus()
+        if (pendingStart && overlayAllowed()) {
+            pendingStart = false
+            startEffects()
+        }
+    }
+
+    private fun overlayAllowed(): Boolean =
+        Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
+
+    private fun buildScreen() {
+        val scroll = ScrollView(this).apply {
+            setBackgroundColor(Color.rgb(14, 15, 20))
+            isFillViewport = true
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(20), dp(26), dp(20), dp(30))
+        }
+        scroll.addView(page)
+        setContentView(scroll)
+
+        page.addView(text("מסך מופרע", 32, 0xFFF2F4F8.toInt(), true))
+        page.addView(text("קצת כאוס על המסך. בלי נזק, בלי חסימות.", 14, 0xFF9AA0B4.toInt(), false))
+        statusText = text("בודק מצב…", 14, 0xFFB6FF3B.toInt(), true)
+        statusText.setPadding(0, dp(14), 0, dp(14))
+        page.addView(statusText)
+
+        val mainButton = button("הפעל את הבלגן", 0xFFB6FF3B.toInt(), 0xFF10130B.toInt())
+        mainButton.textSize = 18f
+        mainButton.minHeight = dp(58)
+        mainButton.setOnClickListener {
+            if (OverlayService.active) stopEffects() else requestAndStart()
+        }
+        page.addView(mainButton, matchWidth())
+
+        val creaturesCard = card("היצורים על המסך", "בחר יצור. הכמות קובעת כמה יטיילו יחד.")
+        page.addView(creaturesCard)
+        val firstRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        val secondRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        creatures.forEachIndexed { index, pair ->
+            val chip = Button(this).apply {
+                text = pair.first
+                textSize = 11f
+                isAllCaps = false
+                minHeight = dp(38)
+                setTextColor(if (prefs.getInt("creature_type", 0) == pair.second) 0xFF10130B.toInt() else 0xFFF2F4F8.toInt())
+                background = rounded(
+                    if (prefs.getInt("creature_type", 0) == pair.second) 0xFFB6FF3B.toInt() else 0xFF292C38.toInt(),
+                    18
+                )
+                setPadding(dp(5), 0, dp(5), 0)
+                setOnClickListener {
+                    prefs.edit().putInt("creature_type", pair.second).apply()
+                    notifyOverlay()
+                    Toast.makeText(this@MainActivity, "נבחר: " + pair.first, Toast.LENGTH_SHORT).show()
+                    buildScreen()
+                }
+            }
+            val target = if (index < 7) firstRow else secondRow
+            target.addView(chip, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                marginStart = dp(2); marginEnd = dp(2); bottomMargin = dp(5)
+            })
+        }
+        creaturesCard.addView(firstRow)
+        creaturesCard.addView(secondRow)
+
+        page.addView(rangeCard("כמות יצורים", "count", 1, 30, 6, ""))
+        page.addView(rangeCard("גודל היצורים", "size", 16, 200, 74, " dp"))
+        page.addView(rangeCard("מהירות תנועה", "speed", 1, 10, 4, "/10"))
+
+        val motion = card("מגע ותנועה", "הגדר איך היצורים מתנהגים על המסך.")
+        page.addView(motion)
+        addToggle(motion, "ריאליזם מלא", "realistic", true, "ציור מפורט עם הצללה, ברק ופרטים.")
+        addToggle(motion, "אפשר למעוך בלחיצה", "touch", false, "במצב כבוי, המגע עובר דרך האפקט והטלפון נשאר רגיל לשימוש.")
+        addToggle(motion, "גודל אקראי לכל יצור", "random_size", true, null)
+        addToggle(motion, "עצירה בניעור הטלפון", "shake_stop", false, null)
+        addToggle(motion, "הפעלה מחדש אחרי אתחול", "boot_start", false, "כבוי כברירת מחדל. דורש הרשאת הצגה מעל אפליקציות.")
+        addToggle(motion, "כפתורי שליטה בהתראה", "notification_actions", true, "התראת שירות קבועה נדרשת באנדרואיד. אפשר להסתיר את הכפתורים, אך לא להסיר את ההתראה.")
+
+        val extras = card("אפקטים נוספים", "האפקטים מצוירים מקומית מעל המסך ואינם משנים קבצים או תוכן.")
+        page.addView(extras)
+        val crack = button("שבור את המסך", 0xFFFF3D81.toInt(), Color.WHITE)
+        crack.setOnClickListener { sendEffect(OverlayService.ACTION_CRACK) }
+        extras.addView(crack, matchWidth())
+        val dirt = button("הוסף כתמי לכלוך", 0xFF252A36.toInt(), Color.WHITE)
+        dirt.setOnClickListener { sendEffect(OverlayService.ACTION_DIRT) }
+        extras.addView(dirt, matchWidth())
+        val clear = button("נקה את כל האפקטים", 0xFF22E4FF.toInt(), 0xFF071317.toInt())
+        clear.setOnClickListener { sendEffect(OverlayService.ACTION_CLEAR) }
+        extras.addView(clear, matchWidth())
+
+        val profiles = card("פרופילים מהירים", "טעינה בלחיצה של שילוב הגדרות.")
+        page.addView(profiles)
+        listOf("הפתעה לחבר", "משרד", "אימה").forEachIndexed { index, name ->
+            val b = button(name, 0xFF292C38.toInt(), Color.WHITE)
+            b.setOnClickListener { applyProfile(index) }
+            profiles.addView(b, matchWidth())
+        }
+
+        val foot = text("הערה: האפליקציה אינה מציגה הודעות מערכת מזויפות ואינה מדמה מסכי נעילה או שירותים פיננסיים. להפסקה מיידית לחץ על הכפתור באפליקציה או על עצור בהתראה.", 12, 0xFF9AA0B4.toInt(), false)
+        foot.setPadding(dp(4), dp(18), dp(4), 0)
+        page.addView(foot)
+        refreshStatus()
+    }
+
+    private fun requestAndStart() {
+        if (!overlayAllowed()) {
+            pendingStart = true
+            AlertDialog.Builder(this)
+                .setTitle("נדרשת הרשאת הצגה מעל אפליקציות")
+                .setMessage("כדי שהחרקים יוכלו לטייל מעל אפליקציות אחרות, צריך לאשר את ההרשאה במסך ההגדרות שייפתח.")
+                .setNegativeButton("לא עכשיו", null)
+                .setPositiveButton("פתיחת הגדרות") { _, _ ->
+                    val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                    startActivity(i)
+                }.show()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 41)
+        }
+        startEffects()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 41) startEffects()
+    }
+
+    private fun startEffects() {
+        if (!overlayAllowed()) return
+        val intent = Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_START)
+        if (Build.VERSION.SDK_INT >= 26) ContextCompat.startForegroundService(this, intent) else startService(intent)
+        refreshStatus()
+    }
+
+    private fun stopEffects() {
+        startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_STOP))
+        refreshStatus()
+    }
+
+    private fun sendEffect(action: String) {
+        if (!OverlayService.active) {
+            Toast.makeText(this, "קודם הפעל את האפקטים", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startService(Intent(this, OverlayService::class.java).setAction(action))
+    }
+
+    private fun notifyOverlay() {
+        if (OverlayService.active) startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_UPDATE))
+    }
+
+    private fun applyProfile(index: Int) {
+        val values = when (index) {
+            0 -> Triple(12, 110, 7)
+            1 -> Triple(4, 46, 2)
+            else -> Triple(18, 135, 5)
+        }
+        prefs.edit()
+            .putInt("count", values.first)
+            .putInt("size", values.second)
+            .putInt("speed", values.third)
+            .putBoolean("realistic", true)
+            .apply()
+        notifyOverlay()
+        Toast.makeText(this, "הפרופיל " + listOf("הפתעה לחבר", "משרד", "אימה")[index] + " נטען", Toast.LENGTH_SHORT).show()
+        buildScreen()
+    }
+
+    private fun refreshStatus() {
+        if (!::statusText.isInitialized) return
+        statusText.text = if (OverlayService.active) "● האפקטים פעילים" else "○ האפקטים כבויים"
+    }
+
+    private fun showIntro() {
+        AlertDialog.Builder(this)
+            .setTitle("ברוכים הבאים למסך מופרע")
+            .setMessage("האפליקציה מציגה ציורים הומוריסטיים מעל המסך. היא לא נוגעת בתוכן שמתחת, לא אוספת מידע ולא משתמשת באינטרנט. אפשר לעצור בכל רגע מהאפליקציה או מאריח ההגדרות המהירות.")
+            .setPositiveButton("הבנתי") { _, _ -> prefs.edit().putBoolean("intro_seen", true).apply() }
+            .show()
+    }
+
+    private fun rangeCard(title: String, key: String, min: Int, max: Int, default: Int, suffix: String): LinearLayout {
+        val box = card(title, "הזז את המחוון כדי לשנות את הערך.")
+        val value = text("", 13, 0xFFB6FF3B.toInt(), true)
+        val seek = SeekBar(this).apply {
+            this.max = max - min
+            progress = prefs.getInt(key, default).coerceIn(min, max) - min
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFFB6FF3B.toInt())
+            thumbTintList = android.content.res.ColorStateList.valueOf(0xFFB6FF3B.toInt())
+        }
+        fun update(p: Int) {
+            val actual = min + p
+            value.text = actual.toString() + suffix
+            prefs.edit().putInt(key, actual).apply()
+            notifyOverlay()
+        }
+        update(seek.progress)
+        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, progress: Int, fromUser: Boolean) { update(progress) }
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {}
+        })
+        box.addView(value)
+        box.addView(seek)
+        return box
+    }
+
+    private fun addToggle(parent: LinearLayout, title: String, key: String, default: Boolean, note: String?) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        val toggle = Switch(this).apply {
+            text = title
+            textSize = 15f
+            setTextColor(0xFFF2F4F8.toInt())
+            isChecked = prefs.getBoolean(key, default)
+            thumbTintList = android.content.res.ColorStateList.valueOf(if (isChecked) 0xFFB6FF3B.toInt() else 0xFF9AA0B4.toInt())
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean(key, checked).apply()
+                notifyOverlay()
+                thumbTintList = android.content.res.ColorStateList.valueOf(if (checked) 0xFFB6FF3B.toInt() else 0xFF9AA0B4.toInt())
+            }
+        }
+        row.addView(toggle)
+        if (!note.isNullOrBlank()) row.addView(text(note, 11, 0xFF9AA0B4.toInt(), false))
+        parent.addView(row)
+    }
+
+    private fun card(title: String, subtitle: String): LinearLayout {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = rounded(0xFF1A1C25.toInt(), 20)
+        }
+        box.layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(15) }
+        box.addView(text(title, 18, 0xFFF2F4F8.toInt(), true))
+        val desc = text(subtitle, 12, 0xFF9AA0B4.toInt(), false)
+        desc.setPadding(0, dp(3), 0, dp(10))
+        box.addView(desc)
+        return box
+    }
+
+    private fun text(value: String, size: Int, color: Int, bold: Boolean): TextView =
+        TextView(this).apply {
+            text = value
+            textSize = size.toFloat()
+            setTextColor(color)
+            gravity = Gravity.RIGHT
+            typeface = if (bold) Typeface.create("sans-serif-medium", Typeface.BOLD) else Typeface.create("sans-serif", Typeface.NORMAL)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+
+    private fun button(title: String, backgroundColor: Int, textColor: Int): Button =
+        Button(this).apply {
+            text = title
+            isAllCaps = false
+            textSize = 14f
+            setTextColor(textColor)
+            background = rounded(backgroundColor, 16)
+            setPadding(dp(12), dp(7), dp(12), dp(7))
+            minHeight = dp(46)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) }
+        }
+
+    private fun rounded(color: Int, radius: Int) = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = dp(radius).toFloat()
+    }
+
+    private fun matchWidth() = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) }
+    private fun dp(v: Int) = (v * resources.displayMetrics.density + 0.5f).toInt()
+}
