@@ -280,7 +280,7 @@ class MainActivity : Activity() {
             }
             editor.putInt(key, prefs.getInt("custom_$key", fallback))
         }
-        listOf("realistic", "random_size", "touch", "sound_enabled", "shake_stop").forEach { key ->
+        listOf("realistic", "random_size", "sound_enabled", "shake_stop").forEach { key ->
             editor.putBoolean(key, prefs.getBoolean("custom_$key", false))
         }
         editor.putString("selected_creatures", prefs.getString("custom_selected_creatures", "0"))
