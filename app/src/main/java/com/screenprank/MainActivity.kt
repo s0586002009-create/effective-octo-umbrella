@@ -95,16 +95,18 @@ class MainActivity : Activity() {
                 textSize = 11f
                 isAllCaps = false
                 minHeight = dp(38)
-                setTextColor(if (prefs.getInt("creature_type", 0) == pair.second) 0xFF10130B.toInt() else 0xFFF2F4F8.toInt())
-                background = rounded(
-                    if (prefs.getInt("creature_type", 0) == pair.second) 0xFFB6FF3B.toInt() else 0xFF292C38.toInt(),
-                    18
-                )
+                val chosen = selectedCreatures().contains(pair.second)
+                setTextColor(if (chosen) 0xFF10130B.toInt() else 0xFFF2F4F8.toInt())
+                background = rounded(if (chosen) 0xFFB6FF3B.toInt() else 0xFF292C38.toInt(), 18)
                 setPadding(dp(5), 0, dp(5), 0)
                 setOnClickListener {
-                    prefs.edit().putInt("creature_type", pair.second).apply()
+                    val chosen = selectedCreatures().toMutableSet()
+                    if (!chosen.add(pair.second)) chosen.remove(pair.second)
+                    if (chosen.isEmpty()) chosen.add(pair.second)
+                    prefs.edit().putString("selected_creatures", chosen.sorted().joinToString(","))
+                        .putInt("creature_type", pair.second).apply()
                     notifyOverlay()
-                    Toast.makeText(this@MainActivity, "נבחר: " + pair.first, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "בחירת היצורים עודכנה", Toast.LENGTH_SHORT).show()
                     buildScreen()
                 }
             }
@@ -119,12 +121,21 @@ class MainActivity : Activity() {
         page.addView(rangeCard("כמות יצורים", "count", 1, 30, 6, ""))
         page.addView(rangeCard("גודל היצורים", "size", 16, 200, 74, " dp"))
         page.addView(rangeCard("מהירות תנועה", "speed", 1, 10, 4, "/10"))
+        page.addView(rangeCard("משך הפעלה בדקות (0 = ללא הגבלה)", "duration_minutes", 0, 180, 0, " דקות"))
 
         val motion = card("מגע ותנועה", "הגדר איך היצורים מתנהגים על המסך.")
         page.addView(motion)
         addToggle(motion, "ריאליזם מלא", "realistic", true, "ציור מפורט עם הצללה, ברק ופרטים.")
         addToggle(motion, "אפשר למעוך בלחיצה", "touch", false, "במצב כבוי, המגע עובר דרך האפקט והטלפון נשאר רגיל לשימוש.")
         addToggle(motion, "גודל אקראי לכל יצור", "random_size", true, null)
+        addToggle(motion, "צליל בעת הפעלה", "sound_enabled", false, "צליל קצר שנוצר במכשיר, ללא קובצי שמע.")
+        val pathButton = button("סגנון תנועה: ${pathLabel()}", 0xFF292C38.toInt(), Color.WHITE)
+        pathButton.setOnClickListener {
+            prefs.edit().putInt("path_mode", (prefs.getInt("path_mode", 0) + 1) % 4).apply()
+            notifyOverlay()
+            buildScreen()
+        }
+        motion.addView(pathButton, matchWidth())
         addToggle(motion, "עצירה בניעור הטלפון", "shake_stop", false, null)
         addToggle(motion, "הפעלה מחדש אחרי אתחול", "boot_start", false, "כבוי כברירת מחדל. דורש הרשאת הצגה מעל אפליקציות.")
         addToggle(motion, "כפתורי שליטה בהתראה", "notification_actions", true, "התראת שירות קבועה נדרשת באנדרואיד. אפשר להסתיר את הכפתורים, אך לא להסיר את ההתראה.")
@@ -137,6 +148,24 @@ class MainActivity : Activity() {
         val dirt = button("הוסף כתמי לכלוך", 0xFF252A36.toInt(), Color.WHITE)
         dirt.setOnClickListener { sendEffect(OverlayService.ACTION_DIRT) }
         extras.addView(dirt, matchWidth())
+        val steam = button("הוסף אדים", 0xFF3A5268.toInt(), Color.WHITE)
+        steam.setOnClickListener { sendEffect(OverlayService.ACTION_STEAM) }
+        extras.addView(steam, matchWidth())
+        val fingerprint = button("טביעות אצבע", 0xFF46505B.toInt(), Color.WHITE)
+        fingerprint.setOnClickListener { sendEffect(OverlayService.ACTION_FINGERPRINT) }
+        extras.addView(fingerprint, matchWidth())
+        val coffee = button("כתמי קפה", 0xFF67452F.toInt(), Color.WHITE)
+        coffee.setOnClickListener { sendEffect(OverlayService.ACTION_COFFEE) }
+        extras.addView(coffee, matchWidth())
+        val ink = button("כתמי דיו", 0xFF243B70.toInt(), Color.WHITE)
+        ink.setOnClickListener { sendEffect(OverlayService.ACTION_INK) }
+        extras.addView(ink, matchWidth())
+        val snow = button("פתיתי שלג", 0xFF426D83.toInt(), Color.WHITE)
+        snow.setOnClickListener { sendEffect(OverlayService.ACTION_SNOW) }
+        extras.addView(snow, matchWidth())
+        val sound = button("השמע צליל לדוגמה", 0xFF292C38.toInt(), Color.WHITE)
+        sound.setOnClickListener { sendEffect(OverlayService.ACTION_SOUND) }
+        extras.addView(sound, matchWidth())
         val clear = button("נקה את כל האפקטים", 0xFF22E4FF.toInt(), 0xFF071317.toInt())
         clear.setOnClickListener { sendEffect(OverlayService.ACTION_CLEAR) }
         extras.addView(clear, matchWidth())
@@ -204,6 +233,19 @@ class MainActivity : Activity() {
         if (OverlayService.active) startService(Intent(this, OverlayService::class.java).setAction(OverlayService.ACTION_UPDATE))
     }
 
+    private fun selectedCreatures(): Set<Int> {
+        val saved = prefs.getString("selected_creatures", "")?.split(",")
+            ?.mapNotNull { it.toIntOrNull() }?.filter { it in 0..13 }?.toSet().orEmpty()
+        return if (saved.isEmpty()) setOf(prefs.getInt("creature_type", 0).coerceIn(0, 13)) else saved
+    }
+
+    private fun pathLabel(): String = when (prefs.getInt("path_mode", 0)) {
+        1 -> "גלים אופקיים"
+        2 -> "קפיצות מהקצוות"
+        3 -> "תנועה אנכית"
+        else -> "שיטוט חופשי"
+    }
+
     private fun applyProfile(index: Int) {
         val values = when (index) {
             0 -> Triple(12, 110, 7)
@@ -227,11 +269,27 @@ class MainActivity : Activity() {
     }
 
     private fun showIntro() {
-        AlertDialog.Builder(this)
-            .setTitle("ברוכים הבאים למסך מופרע")
-            .setMessage("האפליקציה מציגה ציורים הומוריסטיים מעל המסך. היא לא נוגעת בתוכן שמתחת, לא אוספת מידע ולא משתמשת באינטרנט. אפשר לעצור בכל רגע מהאפליקציה או מאריח ההגדרות המהירות.")
-            .setPositiveButton("הבנתי") { _, _ -> prefs.edit().putBoolean("intro_seen", true).apply() }
-            .show()
+        val pages = listOf(
+            "האפליקציה מציגה יצורים מצוירים ואפקטים הומוריסטיים מעל המסך. היא אינה משנה את התוכן שמתחת.",
+            "אפשר לבחור כמה סוגי יצורים יחד, לשנות גודל ומהירות, לבחור מסלול תנועה ולהפעיל אפקטים נוספים.",
+            "ההרשאה להצגה מעל אפליקציות נדרשת להפעלה. אפשר לעצור בכל רגע מהאפליקציה, מההתראה או באמצעות ניעור אם הפעלת אפשרות זו."
+        )
+        fun showPage(index: Int) {
+            AlertDialog.Builder(this)
+                .setTitle("ברוכים הבאים · ${index + 1}/3")
+                .setMessage(pages[index])
+                .setCancelable(false)
+                .setPositiveButton(if (index == 2) "מתחילים" else "הבא") { _, _ ->
+                    if (index < 2) showPage(index + 1)
+                    else prefs.edit().putBoolean("intro_seen", true).apply()
+                }
+                .setNegativeButton(if (index == 0) "דלג" else "חזור") { _, _ ->
+                    if (index == 0) prefs.edit().putBoolean("intro_seen", true).apply()
+                    else showPage(index - 1)
+                }
+                .show()
+        }
+        showPage(0)
     }
 
     private fun rangeCard(title: String, key: String, min: Int, max: Int, default: Int, suffix: String): LinearLayout {
