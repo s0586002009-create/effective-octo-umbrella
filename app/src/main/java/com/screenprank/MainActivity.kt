@@ -79,6 +79,15 @@ class MainActivity : Activity() {
         }
         page.addView(mainButton, matchWidth())
 
+        val stopAllButton = button("■  כבה הכל – הסר את כל היצורים והאפקטים", 0xFFB3263E.toInt(), Color.WHITE)
+        stopAllButton.textSize = 15f
+        stopAllButton.minHeight = dp(52)
+        stopAllButton.setOnClickListener {
+            stopEffects()
+            Toast.makeText(this, "כל היצורים והאפקטים כובו", Toast.LENGTH_SHORT).show()
+        }
+        page.addView(stopAllButton, matchWidth())
+
         val creaturesCard = card("היצורים על המסך", "בחר יצור. הכמות קובעת כמה יטיילו יחד.")
         page.addView(creaturesCard)
         val firstRow = LinearLayout(this).apply {
@@ -142,25 +151,25 @@ class MainActivity : Activity() {
 
         val extras = card("אפקטים נוספים", "האפקטים מצוירים מקומית מעל המסך ואינם משנים קבצים או תוכן.")
         page.addView(extras)
-        val crack = button("שבור את המסך", 0xFFFF3D81.toInt(), Color.WHITE)
+        val crack = button("🕸️  שברי זכוכית – מראה מציאותי", 0xFFFF3D81.toInt(), Color.WHITE)
         crack.setOnClickListener { sendEffect(OverlayService.ACTION_CRACK) }
         extras.addView(crack, matchWidth())
-        val dirt = button("הוסף כתמי לכלוך", 0xFF252A36.toInt(), Color.WHITE)
+        val dirt = button("🟤  בוץ ולכלוך – כתמים", 0xFF252A36.toInt(), Color.WHITE)
         dirt.setOnClickListener { sendEffect(OverlayService.ACTION_DIRT) }
         extras.addView(dirt, matchWidth())
-        val steam = button("הוסף אדים", 0xFF3A5268.toInt(), Color.WHITE)
+        val steam = button("💨  אדים על המסך", 0xFF3A5268.toInt(), Color.WHITE)
         steam.setOnClickListener { sendEffect(OverlayService.ACTION_STEAM) }
         extras.addView(steam, matchWidth())
-        val fingerprint = button("טביעות אצבע", 0xFF46505B.toInt(), Color.WHITE)
+        val fingerprint = button("👆  טביעות אצבע", 0xFF46505B.toInt(), Color.WHITE)
         fingerprint.setOnClickListener { sendEffect(OverlayService.ACTION_FINGERPRINT) }
         extras.addView(fingerprint, matchWidth())
-        val coffee = button("כתמי קפה", 0xFF67452F.toInt(), Color.WHITE)
+        val coffee = button("☕  כתמי קפה", 0xFF67452F.toInt(), Color.WHITE)
         coffee.setOnClickListener { sendEffect(OverlayService.ACTION_COFFEE) }
         extras.addView(coffee, matchWidth())
-        val ink = button("כתמי דיו", 0xFF243B70.toInt(), Color.WHITE)
+        val ink = button("🖋️  כתמי דיו", 0xFF243B70.toInt(), Color.WHITE)
         ink.setOnClickListener { sendEffect(OverlayService.ACTION_INK) }
         extras.addView(ink, matchWidth())
-        val snow = button("פתיתי שלג", 0xFF426D83.toInt(), Color.WHITE)
+        val snow = button("❄️  פתיתי שלג", 0xFF426D83.toInt(), Color.WHITE)
         snow.setOnClickListener { sendEffect(OverlayService.ACTION_SNOW) }
         extras.addView(snow, matchWidth())
         val sound = button("השמע צליל לדוגמה", 0xFF292C38.toInt(), Color.WHITE)
