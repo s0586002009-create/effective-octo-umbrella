@@ -34,6 +34,10 @@ class MainActivity : Activity() {
             BitmapDrawable(resources, Bitmap.createBitmap(sheet, (index % 7) * 64, (index / 7) * 64, 64, 64))
         }
     }
+    private val effectThumbnails by lazy {
+        val sheet = BitmapFactory.decodeResource(resources, R.drawable.effects)
+        Array(7) { index -> BitmapDrawable(resources, Bitmap.createBitmap(sheet, index * 64, 0, 64, 64)) }
+    }
     private val creatures = listOf(
         "זבוב" to 0, "עכביש" to 1, "מקק" to 2, "נמלה" to 3,
         "פרת משה רבנו" to 4, "יתוש" to 5, "דבורה" to 6,
@@ -163,24 +167,38 @@ class MainActivity : Activity() {
         val extras = card("אפקטים נוספים", "האפקטים מצוירים מקומית מעל המסך ואינם משנים קבצים או תוכן.")
         page.addView(extras)
         val crack = button("🕸️  שברי זכוכית – מראה מציאותי", 0xFFFF3D81.toInt(), Color.WHITE)
+        crack.setCompoundDrawablesRelative(effectThumbnails[0].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        crack.compoundDrawablePadding = dp(6)
         crack.setOnClickListener { sendEffect(OverlayService.ACTION_CRACK) }
         extras.addView(crack, matchWidth())
         val dirt = button("🟤  בוץ ולכלוך – כתמים", 0xFF252A36.toInt(), Color.WHITE)
+        dirt.setCompoundDrawablesRelative(effectThumbnails[1].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        dirt.compoundDrawablePadding = dp(6)
         dirt.setOnClickListener { sendEffect(OverlayService.ACTION_DIRT) }
         extras.addView(dirt, matchWidth())
         val steam = button("💨  אדים על המסך", 0xFF3A5268.toInt(), Color.WHITE)
+        steam.setCompoundDrawablesRelative(effectThumbnails[2].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        steam.compoundDrawablePadding = dp(6)
         steam.setOnClickListener { sendEffect(OverlayService.ACTION_STEAM) }
         extras.addView(steam, matchWidth())
         val fingerprint = button("👆  טביעות אצבע", 0xFF46505B.toInt(), Color.WHITE)
+        fingerprint.setCompoundDrawablesRelative(effectThumbnails[3].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        fingerprint.compoundDrawablePadding = dp(6)
         fingerprint.setOnClickListener { sendEffect(OverlayService.ACTION_FINGERPRINT) }
         extras.addView(fingerprint, matchWidth())
         val coffee = button("☕  כתמי קפה", 0xFF67452F.toInt(), Color.WHITE)
+        coffee.setCompoundDrawablesRelative(effectThumbnails[4].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        coffee.compoundDrawablePadding = dp(6)
         coffee.setOnClickListener { sendEffect(OverlayService.ACTION_COFFEE) }
         extras.addView(coffee, matchWidth())
         val ink = button("🖋️  כתמי דיו", 0xFF243B70.toInt(), Color.WHITE)
+        ink.setCompoundDrawablesRelative(effectThumbnails[5].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        ink.compoundDrawablePadding = dp(6)
         ink.setOnClickListener { sendEffect(OverlayService.ACTION_INK) }
         extras.addView(ink, matchWidth())
         val snow = button("❄️  פתיתי שלג", 0xFF426D83.toInt(), Color.WHITE)
+        snow.setCompoundDrawablesRelative(effectThumbnails[6].apply { setBounds(0, 0, dp(30), dp(30)) }, null, null, null)
+        snow.compoundDrawablePadding = dp(6)
         snow.setOnClickListener { sendEffect(OverlayService.ACTION_SNOW) }
         extras.addView(snow, matchWidth())
         val sound = button("השמע צליל לדוגמה", 0xFF292C38.toInt(), Color.WHITE)
