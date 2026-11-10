@@ -13,8 +13,8 @@ android {
         applicationId = "com.screenprank"
         minSdk = 21
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 5
+        versionName = "0.5"
     }
     signingConfigs {
         create("release") {
