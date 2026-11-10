@@ -102,6 +102,13 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
         strokeJoin = Paint.Join.ROUND
     }
     private val dirtPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(62, 74, 52, 34) }
+    private val extraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 3f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
     private val shaders = Array(14) { index ->
         val colors = when (index) {
             4 -> intArrayOf(Color.rgb(255, 220, 76), Color.rgb(208, 42, 44), Color.rgb(67, 20, 24))
@@ -475,9 +482,62 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
         invalidate()
     }
 
+    fun showExtraEffect(kind: Int) {
+        extraEffect = kind.coerceIn(0, 5)
+        invalidate()
+    }
+
+    private fun drawExtraEffect(canvas: Canvas) {
+        val d = resources.displayMetrics.density
+        when (extraEffect) {
+            1 -> {
+                extraPaint.color = Color.argb(125, 225, 238, 245); extraPaint.strokeWidth = 5f * d
+                for (i in 0..7) {
+                    val x = widthPx * (0.12f + i * 0.105f); val y = heightPx * (0.18f + (i % 3) * 0.27f)
+                    path.reset(); path.moveTo(x, y + 55f * d)
+                    path.cubicTo(x - 35f * d, y + 15f * d, x + 38f * d, y - 20f * d, x, y - 75f * d)
+                    canvas.drawPath(path, extraPaint)
+                }
+            }
+            2 -> {
+                extraPaint.color = Color.argb(95, 215, 224, 230); extraPaint.strokeWidth = 2f * d
+                for (i in 0..5) {
+                    val x = widthPx * (0.16f + (i % 3) * 0.32f); val y = heightPx * (0.2f + (i / 3) * 0.48f)
+                    for (ring in 0..3) canvas.drawCircle(x, y, (13f + ring * 5f) * d, extraPaint)
+                    canvas.drawArc(x - 18f * d, y - 18f * d, x + 18f * d, y + 18f * d, 25f, 290f, false, extraPaint)
+                }
+            }
+            3 -> {
+                extraPaint.color = Color.argb(115, 92, 54, 30); extraPaint.strokeWidth = 5f * d
+                for (i in 0..4) {
+                    val x = widthPx * (0.12f + i * 0.19f); val y = heightPx * (0.2f + (i % 2) * 0.48f)
+                    canvas.drawCircle(x, y, (24f + (i % 3) * 8f) * d, extraPaint)
+                    canvas.drawCircle(x + 8f * d, y + 20f * d, 8f * d, extraPaint)
+                }
+            }
+            4 -> {
+                extraPaint.color = Color.argb(125, 20, 43, 112); extraPaint.style = Paint.Style.FILL
+                for (i in 0..22) canvas.drawCircle(randomSpotX(i), randomSpotY(i), (5f + (i % 5) * 2f) * d, extraPaint)
+                extraPaint.style = Paint.Style.STROKE
+            }
+            5 -> {
+                extraPaint.color = Color.argb(170, 225, 244, 255); extraPaint.strokeWidth = 2f * d
+                for (i in 0..45) {
+                    val x = randomSpotX(i + 40); val y = randomSpotY(i + 40); val r = (3f + (i % 4) * 1.5f) * d
+                    canvas.drawLine(x - r, y, x + r, y, extraPaint); canvas.drawLine(x, y - r, x, y + r, extraPaint)
+                    canvas.drawLine(x - r * .7f, y - r * .7f, x + r * .7f, y + r * .7f, extraPaint)
+                }
+            }
+        }
+    }
+
+    private fun randomSpotX(seed: Int): Float = ((seed * 73L % 997L).toFloat() / 997f) * widthPx
+    private fun randomSpotY(seed: Int): Float = ((seed * 137L % 991L).toFloat() / 991f) * heightPx
+
     fun clearEffects() {
         cracked = false
         dirty = false
+        extraEffect = 0
         crackPath.reset()
         spots.clear()
         invalidate()
