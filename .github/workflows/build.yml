@@ -108,6 +108,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.3
+          target_commitish: release/0.3
           name: מסך מופרע 0.3
           files: |
             screen-prank-debug.apk
