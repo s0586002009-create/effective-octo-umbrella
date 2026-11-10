@@ -100,8 +100,7 @@ class OverlayService : Service(), SensorEventListener {
             }
             ACTION_UPDATE -> {
                 overlay?.updateSettings()
-                updateWindowTouchMode()
-                updateShakeListener()
+                    updateShakeListener()
                 updateNotification()
             }
             ACTION_CRACK -> overlay?.showCrack()
@@ -168,9 +167,8 @@ class OverlayService : Service(), SensorEventListener {
         var windowFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
-        if (!prefs.getBoolean("touch", false)) {
-            windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        }
+        // Overlay is always non-touchable so taps pass through to the app underneath.
+        windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -189,15 +187,6 @@ class OverlayService : Service(), SensorEventListener {
         } catch (_: WindowManager.BadTokenException) {
             stopEverything()
         }
-    }
-
-    private fun updateWindowTouchMode() {
-        val view = overlay ?: return
-        val params = view.layoutParams as? WindowManager.LayoutParams ?: return
-        val wantsTouch = prefs.getBoolean("touch", false)
-        if (wantsTouch) params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-        else params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        try { windowManager.updateViewLayout(view, params) } catch (_: Exception) { }
     }
 
     private fun updateNotification() {
