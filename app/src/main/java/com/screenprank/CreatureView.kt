@@ -199,27 +199,51 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
     private fun updatePositions(dt: Float) {
         if (paused || bugs.isEmpty()) return
         val bounds = 64f * resources.displayMetrics.density
+        val velocity = (18f + speedSetting * 10f) * resources.displayMetrics.density
         bugs.forEach { bug ->
             bug.phase += dt * (1.1f + speedSetting * 0.16f)
-            if (bug.pause > 0f) {
-                bug.pause -= dt
-                return@forEach
+            if (bug.pause > 0f) { bug.pause -= dt; return@forEach }
+            when (pathMode) {
+                1 -> {
+                    bug.vx = if (bug.vx >= 0f) velocity else -velocity
+                    bug.vy = sin(bug.phase * 1.7f) * velocity * 0.72f
+                    bug.x += bug.vx * dt
+                    bug.y = (bug.y + bug.vy * dt).coerceIn(bounds, (heightPx - bounds).coerceAtLeast(bounds))
+                    if (bug.x < -bounds) bug.x = widthPx + bounds
+                    if (bug.x > widthPx + bounds) bug.x = -bounds
+                }
+                2 -> {
+                    bug.x += bug.vx * dt; bug.y += bug.vy * dt
+                    if (bug.x < bounds || bug.x > widthPx - bounds) bug.vx = -bug.vx
+                    if (bug.y < bounds || bug.y > heightPx - bounds) bug.vy = -bug.vy
+                    bug.x = bug.x.coerceIn(bounds, (widthPx - bounds).coerceAtLeast(bounds))
+                    bug.y = bug.y.coerceIn(bounds, (heightPx - bounds).coerceAtLeast(bounds))
+                }
+                3 -> {
+                    bug.vy = if (bug.vy >= 0f) velocity * 0.7f else -velocity * 0.7f
+                    bug.vx = cos(bug.phase) * velocity * 0.55f
+                    bug.x += bug.vx * dt; bug.y += bug.vy * dt
+                    if (bug.y < -bounds) bug.y = heightPx + bounds
+                    if (bug.y > heightPx + bounds) bug.y = -bounds
+                    if (bug.x < -bounds) bug.x = widthPx + bounds
+                    if (bug.x > widthPx + bounds) bug.x = -bounds
+                }
+                else -> {
+                    if (random.nextFloat() < dt * 0.42f) {
+                        val angle = atan2(bug.vy, bug.vx) + (random.nextFloat() - 0.5f) * 1.4f
+                        bug.vx = cos(angle) * velocity
+                        bug.vy = sin(angle) * velocity * 0.45f
+                        if (random.nextFloat() < 0.12f) bug.pause = 0.5f + random.nextFloat() * 1.2f
+                    }
+                    bug.x += bug.vx * dt
+                    bug.y += bug.vy * dt + sin(bug.phase * 2f) * 9f * dt
+                    if (bug.x < -bounds) bug.x = widthPx + bounds
+                    if (bug.x > widthPx + bounds) bug.x = -bounds
+                    if (bug.y < -bounds) bug.y = heightPx + bounds
+                    if (bug.y > heightPx + bounds) bug.y = -bounds
+                }
             }
-            if (random.nextFloat() < dt * 0.42f) {
-                val turn = (random.nextFloat() - 0.5f) * 1.4f
-                val angle = atan2(bug.vy, bug.vx) + turn
-                val velocity = (18f + speedSetting * 10f) * resources.displayMetrics.density
-                bug.vx = cos(angle) * velocity
-                bug.vy = sin(angle) * velocity * 0.45f
-                if (random.nextFloat() < 0.12f) bug.pause = 0.5f + random.nextFloat() * 1.2f
-            }
-            bug.x += bug.vx * dt
-            bug.y += bug.vy * dt + sin(bug.phase * 2f) * 9f * dt
             bug.rotation = atan2(bug.vy, bug.vx) * 180f / PI.toFloat()
-            if (bug.x < -bounds) bug.x = widthPx + bounds
-            if (bug.x > widthPx + bounds) bug.x = -bounds
-            if (bug.y < -bounds) bug.y = heightPx + bounds
-            if (bug.y > heightPx + bounds) bug.y = -bounds
         }
     }
 
