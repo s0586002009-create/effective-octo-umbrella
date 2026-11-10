@@ -17,6 +17,10 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.provider.Settings
 import android.view.Gravity
 import android.view.WindowManager
@@ -32,6 +36,12 @@ class OverlayService : Service(), SensorEventListener {
         const val ACTION_CRACK = "com.screenprank.CRACK"
         const val ACTION_DIRT = "com.screenprank.DIRT"
         const val ACTION_CLEAR = "com.screenprank.CLEAR"
+        const val ACTION_STEAM = "com.screenprank.STEAM"
+        const val ACTION_FINGERPRINT = "com.screenprank.FINGERPRINT"
+        const val ACTION_COFFEE = "com.screenprank.COFFEE"
+        const val ACTION_INK = "com.screenprank.INK"
+        const val ACTION_SNOW = "com.screenprank.SNOW"
+        const val ACTION_SOUND = "com.screenprank.SOUND"
         private const val CHANNEL_ID = "screen_prank_running"
         private const val NOTIFICATION_ID = 8041
         @Volatile var active: Boolean = false
@@ -45,6 +55,9 @@ class OverlayService : Service(), SensorEventListener {
     private var receiverRegistered = false
     private var sensorManager: SensorManager? = null
     private var lastShake = 0L
+    private val timerHandler = Handler(Looper.getMainLooper())
+    private val timedStop = Runnable { stopEverything() }
+    private var toneGenerator: ToneGenerator? = null
 
     private fun overlayAllowed(): Boolean =
         Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)
@@ -94,6 +107,12 @@ class OverlayService : Service(), SensorEventListener {
             ACTION_CRACK -> overlay?.showCrack()
             ACTION_DIRT -> overlay?.showDirt()
             ACTION_CLEAR -> overlay?.clearEffects()
+            ACTION_STEAM -> overlay?.showExtraEffect(1)
+            ACTION_FINGERPRINT -> overlay?.showExtraEffect(2)
+            ACTION_COFFEE -> overlay?.showExtraEffect(3)
+            ACTION_INK -> overlay?.showExtraEffect(4)
+            ACTION_SNOW -> overlay?.showExtraEffect(5)
+            ACTION_SOUND -> playSound()
             ACTION_START -> {
                 if (!overlayAllowed()) {
                     stopSelf()
@@ -101,10 +120,25 @@ class OverlayService : Service(), SensorEventListener {
                 }
                 startAsForeground()
                 addOverlay()
+                scheduleTimedStop()
+                if (prefs.getBoolean("sound_enabled", false)) playSound()
                 updateShakeListener()
             }
         }
         return START_STICKY
+    }
+
+    private fun scheduleTimedStop() {
+        timerHandler.removeCallbacks(timedStop)
+        val minutes = prefs.getInt("duration_minutes", 0).coerceIn(0, 180)
+        if (minutes > 0) timerHandler.postDelayed(timedStop, minutes * 60_000L)
+    }
+
+    private fun playSound() {
+        try {
+            if (toneGenerator == null) toneGenerator = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 65)
+            toneGenerator?.startTone(ToneGenerator.TONE_PROP_ACK, 180)
+        } catch (_: Exception) { }
     }
 
     private fun startAsForeground() {
@@ -238,6 +272,7 @@ class OverlayService : Service(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     private fun stopEverything() {
+        timerHandler.removeCallbacks(timedStop)
         active = false
         overlay?.let {
             try { windowManager.removeView(it) } catch (_: Exception) { }
@@ -255,6 +290,9 @@ class OverlayService : Service(), SensorEventListener {
         }
         overlay = null
         sensorManager?.unregisterListener(this)
+        toneGenerator?.release()
+        toneGenerator = null
+        timerHandler.removeCallbacksAndMessages(null)
         if (receiverRegistered) {
             try { unregisterReceiver(screenReceiver) } catch (_: Exception) { }
             receiverRegistered = false
