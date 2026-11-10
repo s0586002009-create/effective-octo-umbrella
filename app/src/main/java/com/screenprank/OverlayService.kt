@@ -153,7 +153,6 @@ class OverlayService : Service(), SensorEventListener {
     private fun addOverlay() {
         if (overlay != null) {
             overlay?.updateSettings()
-            updateWindowTouchMode()
             return
         }
         val view = CreatureView(this).apply {
