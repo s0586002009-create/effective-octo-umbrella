@@ -578,7 +578,7 @@ class CreatureView(context: Context) : View(context), Choreographer.FrameCallbac
                 vy = sin(angle) * velocity * 0.45f,
                 rotation = angle * 180f / PI.toFloat(),
                 scale = pxSize / 90f,
-                type = creatureType
+                type = selectedTypes.random(random)
             )
         )
     }
